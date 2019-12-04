@@ -43,6 +43,8 @@ public class SpatialView extends JPanel implements ActionListener
     private JTextField maxBirthField;
     private JButton applyButton;
 
+    private JProgressBar progressBar;
+
     public SpatialView()
     {
         _controller = new LifeController(this, 2, 3, 3, 3, false, 50);
@@ -51,6 +53,8 @@ public class SpatialView extends JPanel implements ActionListener
         _height = 50;
 
         setLayout(new BorderLayout());
+
+        progressBar = new JProgressBar(0, _width * _height);
 
         _board = new JPanel();
         populateBoard();
@@ -82,6 +86,7 @@ public class SpatialView extends JPanel implements ActionListener
             JPanel controlPanel = new JPanel(new BorderLayout());
             JPanel cPanel = new JPanel();
             JPanel cPanel2 = new JPanel();
+            JPanel cPanel3 = new JPanel();
 
             cPanel.add(resetButton);
             cPanel.add(randomizeButton);
@@ -101,6 +106,9 @@ public class SpatialView extends JPanel implements ActionListener
             cPanel2.add(maxBirthLabel);
             cPanel2.add(maxBirthField);
             cPanel2.add(applyButton);
+            cPanel3.add(progressBar);
+
+            progressBar.setPreferredSize(new Dimension(DEFAULT_WIDTH, 25));
 
             resetButton.addActionListener(this);
             randomizeButton.addActionListener(this);
@@ -112,6 +120,7 @@ public class SpatialView extends JPanel implements ActionListener
 
             controlPanel.add(cPanel, BorderLayout.NORTH);
             controlPanel.add(cPanel2, BorderLayout.CENTER); // Previously SOUTH
+            controlPanel.add(cPanel3, BorderLayout.SOUTH);
 
             add(controlPanel, BorderLayout.SOUTH);
         }
@@ -119,6 +128,7 @@ public class SpatialView extends JPanel implements ActionListener
 
     public void populateBoard()
     {
+        progressBar.setIndeterminate(true);
 
         _board.removeAll();
         _board.setLayout(new GridLayout(_height, _width));
@@ -128,20 +138,61 @@ public class SpatialView extends JPanel implements ActionListener
 
         // Number of cells we'll need to populate with
         int xcells = _width * _height;
+        final int factor = _width;
 
-        for (int y = 0; y < _height; y++)
-        {
-            for (int x = 0; x < _width; x++)
+        resetProgressBar(xcells, "Resizing");
+
+        new Thread(new Runnable() {
+            public void run()
             {
-                _space[x][y] = new CellViewModel(_controller, x, y);
-                _space[x][y].setPreferredSize(cellSize);
-                _board.add(_space[x][y]);
+                for (int y = 0; y < _height; y++)
+                {
+                    for (int x = 0; x < _width; x++)
+                    {
+                        _space[x][y] = new CellViewModel(_controller, x, y);
+                        _space[x][y].setPreferredSize(cellSize);
+
+                        final int cx = x; // Allow Runnable to access these
+                        final int cy = y;
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run()
+                            {
+                                _board.add(_space[cx][cy]);
+                                progressBar.setValue(cy * factor + cx); // How many top-level rows have we gone through?
+                            }
+                        });
+                    }
+                }
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run()
+                    {
+                        _board.revalidate();
+                        _board.repaint();
+                        finish();
+                    }
+                });
             }
-        }
+        }).start();
+    }
 
+    public void resetProgressBar(int max, String display)
+    {
+        progressBar.setIndeterminate(false);
+        progressBar.setMaximum(max);
+        progressBar.setValue(0);
+        progressBar.setStringPainted(true);
+        progressBar.setString(display);
+    }
 
-        _board.revalidate();
-        _board.repaint();
+    public void reportProgress(int progress)
+    {
+        progressBar.setValue(progress);
+    }
+
+    public void finish()
+    {
+        progressBar.setValue(progressBar.getMaximum());
+        progressBar.setString("Done.");
     }
 
     public int getSpaceWidth()

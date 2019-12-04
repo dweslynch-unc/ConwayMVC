@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.util.LinkedList;
 
 public class LifeController
@@ -80,17 +81,82 @@ public class LifeController
 
     public void clear()
     {
-        for (int x = 0; x < _space.getSpaceWidth(); x++)
-        {
-            for (int y = 0; y < _space.getSpaceHeight(); y++)
+        final int factor = _space.getSpaceHeight();
+        final int xcells = _space.getSpaceWidth() * _space.getSpaceHeight();
+        _space.resetProgressBar(xcells, "Clearing");
+
+        new Thread(new Runnable() {
+            public void run()
             {
-                _space.getCell(x, y).kill();
+                for (int x = 0; x < _space.getSpaceWidth(); x++)
+                {
+                    final int cx = x;
+
+                    for (int y = 0; y < _space.getSpaceHeight(); y++)
+                    {
+                        //final int cx = x;
+                        final int cy = y;
+
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run()
+                            {
+                                _space.getCell(cx, cy).kill();
+                                _space.reportProgress(cx * factor + cy);
+                            }
+                        });
+                    }
+                }
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run()
+                    {
+                        _space.finish();
+                    }
+                });
             }
-        }
+        }).start();
     }
 
     public void randomize()
     {
+        final int factor = _space.getSpaceHeight();
+        final int xcells = _space.getSpaceWidth() * _space.getSpaceHeight();
+        _space.resetProgressBar(xcells, "Randomizing");
+
+        new Thread(new Runnable() {
+            public void run()
+            {
+                for (int x = 0; x < _space.getSpaceWidth(); x++)
+                {
+                    final int cx = x;
+
+                    for (int y = 0; y < _space.getSpaceHeight(); y++)
+                    {
+                        //final int cx = x;
+                        final int cy = y;
+
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run()
+                            {
+                                if (Math.random() < 0.5)
+                                    _space.getCell(cx, cy).set();
+                                else
+                                    _space.getCell(cx, cy).kill();
+
+                                _space.reportProgress(cx * factor + cy);
+                            }
+                        });
+                    }
+                }
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run()
+                    {
+                        _space.finish();
+                    }
+                });
+            }
+        }).start();
+
+        /*
         for (int x = 0; x < _space.getSpaceWidth(); x++)
         {
             for (int y = 0; y < _space.getSpaceHeight(); y++)
@@ -101,6 +167,7 @@ public class LifeController
                     _space.getCell(x, y).kill();
             }
         }
+        */
     }
 
     public void step()
